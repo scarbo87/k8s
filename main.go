@@ -21,7 +21,10 @@ import (
 var (
 	apiAddress        string
 	monitoringAddress string
+	launchDelay       = time.Second * 3
+	shutdownDelay     = time.Second * 3
 	isReady           = atomic.NewBool(false)
+	err               error
 )
 
 func init() {
@@ -33,6 +36,22 @@ func init() {
 	monitoringAddress = os.Getenv("MONITORING_ADDRESS")
 	if monitoringAddress == "" {
 		monitoringAddress = ":8001"
+	}
+
+	launchDelayStr := os.Getenv("LAUNCH_DELAY")
+	if launchDelayStr != "" {
+		launchDelay, err = time.ParseDuration(launchDelayStr)
+		if err != nil {
+			log.Fatalf("Incorrect format of LAUNCH_DELAY %s\n", launchDelayStr)
+		}
+	}
+
+	shutdownDelayStr := os.Getenv("SHUTDOWN_DELAY")
+	if shutdownDelayStr != "" {
+		shutdownDelay, err = time.ParseDuration(shutdownDelayStr)
+		if err != nil {
+			log.Fatalf("Incorrect format of SHUTDOWN_DELAY %s\n", shutdownDelayStr)
+		}
 	}
 }
 
@@ -48,8 +67,8 @@ func main() {
 	log.Printf("Run monitoring server by address %s\n", monitoringAddress)
 	monitoringServer := runServer(monitoringAddress, getMonitoringHandler())
 
-	log.Println("Emulate launch application")
-	time.Sleep(time.Second * 3)
+	log.Printf("Emulate launch application, delay %s\n", launchDelay)
+	time.Sleep(launchDelay)
 
 	log.Printf("Run api server by address %s\n", apiAddress)
 	apiServer := runServer(apiAddress, &apiHandler{})
@@ -57,13 +76,19 @@ func main() {
 
 	<-ctx.Done()
 	isReady.Store(false)
-	log.Println("Shutdown application")
+	log.Printf("Shutdown application, delay %s\n", shutdownDelay)
 
-	ctx, cancel = context.WithTimeout(ctx, time.Second)
+	ctx, cancel = context.WithTimeout(ctx, shutdownDelay)
 	defer cancel()
 
-	_ = apiServer.Shutdown(ctx)
-	_ = monitoringServer.Shutdown(ctx)
+	go func() {
+		_ = apiServer.Shutdown(ctx)
+	}()
+	go func() {
+		_ = monitoringServer.Shutdown(ctx)
+	}()
+
+	time.Sleep(shutdownDelay)
 }
 
 func getMonitoringHandler() http.Handler {
