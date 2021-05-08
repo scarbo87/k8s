@@ -7,4 +7,4 @@ RUN make dep && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /go/bin/k8s-ex
 FROM scratch
 ENTRYPOINT ["/app/k8s-example"]
 EXPOSE 8000 8001
-COPY --from=builder /go/bin/k8s /app/k8s
+COPY --from=builder /go/bin/k8s-example /app/k8s-example
