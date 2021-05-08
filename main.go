@@ -137,13 +137,19 @@ func (h *apiHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	})
 
 	builder := &strings.Builder{}
+	_, _ = fmt.Fprintln(builder, "Request:")
 	_, _ = fmt.Fprintf(builder, "%s %s %s\n", r.Method, r.URL, r.Proto)
 	_, _ = fmt.Fprintf(builder, "Host = %q\n", r.Host)
 	_, _ = fmt.Fprintf(builder, "RemoteAddr = %q\n", r.RemoteAddr)
-	_, _ = fmt.Fprintln(builder, "Headers:")
+	_, _ = fmt.Fprintln(builder, "Headers")
 	for _, h := range headers {
 		_, _ = fmt.Fprintf(builder, "\t%q = %q\n", h.key, h.values)
 	}
+
+	hostName, _ := os.Hostname()
+	_, _ = fmt.Fprintf(builder, "\nEnvironment:\n")
+	_, _ = fmt.Fprintf(builder, "Hostname = %s\n", hostName)
+	_, _ = fmt.Fprintf(builder, "PID = %d\n", os.Getpid())
 
 	_, _ = rw.Write([]byte(builder.String()))
 }
